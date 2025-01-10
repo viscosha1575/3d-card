@@ -1,7 +1,8 @@
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-const renderer = new THREE.WebGLRenderer();
+const renderer = new THREE.WebGLRenderer({ antialias: true });
 
+renderer.setPixelRatio(window.devicePixelRatio); // Учет плотности пикселей устройства
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
@@ -20,7 +21,7 @@ loader.load(
     'squid_game_card.glb', // Замените на путь к вашей GLB модели
     (gltf) => {
         card = gltf.scene; // Загруженная сцена
-        card.scale.set(1, 1, 1);
+        card.scale.set(8, 8, 8); // Увеличение масштаба модели
 
         // Сделать материалы двусторонними
         card.traverse((node) => {
@@ -38,8 +39,19 @@ loader.load(
 );
 
 // Камера
-camera.position.set(0, 0, 5); // Камера перед объектом
+camera.position.set(0, 0, 21); // Приближение к модели для увеличения её видимого размера
+
 camera.lookAt(0, 0, 0); // Направлена на центр сцены
+
+// Использование EffectComposer для пост-обработки
+const composer = new THREE.EffectComposer(renderer);
+const renderPass = new THREE.RenderPass(scene, camera);
+composer.addPass(renderPass);
+
+// FXAA для сглаживания
+const fxaaPass = new THREE.ShaderPass(THREE.FXAAShader);
+fxaaPass.material.uniforms['resolution'].value.set(1 / window.innerWidth, 1 / window.innerHeight);
+composer.addPass(fxaaPass);
 
 // Анимация
 let isFlipping = false;
@@ -59,7 +71,7 @@ function animate() {
         }
     }
 
-    renderer.render(scene, camera);
+    composer.render(); // Используем пост-обработку для рендера
 }
 animate();
 
@@ -76,4 +88,5 @@ window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
+    composer.setSize(window.innerWidth, window.innerHeight); // Обновляем размеры для FXAA
 });
